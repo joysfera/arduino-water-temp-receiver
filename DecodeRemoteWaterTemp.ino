@@ -7,6 +7,7 @@
  *
  * GPLv3
  */
+
 bool enabled = false;
 unsigned long lastChange = 0;
 boolean preamble = false;
@@ -29,6 +30,16 @@ void loop() {
     }
 }
 
+inline int delta(int dist)
+{
+    return dist > 0 ? dist : -dist;
+}
+
+bool isImpuls(unsigned int duration, unsigned int length)
+{
+    return (delta(duration, length) <= TOLERANCE);
+}
+
 void handler()
 {
     if (!enabled) return;
@@ -38,16 +49,16 @@ void handler()
     lastChange = currentTime;
     boolean state = digitalRead(2);
     if (!state) {     // goes from HIGH to LOW
-        space = (duration >= 450 && duration < 550);             // should be 500
+        space = isImpuls(duration, 500);
     }
     else if (space) { // goes from LOW to HIGH
         if (!preamble) {
-            preamble = (duration >= 9000 && duration < 10000);   // should be 9500
+            preamble = isImpuls(duration, 9500);
             bits = 0;
         }
         else {
-            boolean low = (duration > 1800 && duration < 2200);  // should be 2000
-            boolean high = (duration > 4000 && duration < 5000); // should be 4500
+            boolean low = isImpuls(duration, 2000);
+            boolean high = !low && isImpuls(duration, 4500);
             if (low != high) {
                 arr[bits++] = high;
                 if (bits == 28) {
