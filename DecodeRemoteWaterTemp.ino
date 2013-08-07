@@ -8,35 +8,74 @@
  * GPLv3
  */
 
-bool enabled = false;
-unsigned long lastChange = 0;
-boolean preamble = false;
-boolean space = false;
-byte bits = 0;
+bool enabled;
+unsigned long lastChange;
+boolean preamble;
+boolean space;
+byte bits;
 boolean arr[28];
+
+byte last_id;
+byte last_chan;
+int last_temp;
+unsigned long last_milistamp;
+
+typedef void (*SencorReceiverCallback)(byte &id, int &temp, byte &chan, boolean &batt, boolean &beep);
+SencorReceiverCallback callback;
 
 #define TOLERANCE 50
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
+    callback = printdata;
+    init1();
+}
+
+void loop()
+{
+}
+
+void init1()
+{
     attachInterrupt(0, handler, CHANGE);
+    enable1();
+}
+
+void deinit1()
+{
+    disable1();
+    detachInterrupt(0);
+}
+
+void enable1()
+{
+    lastChange = micros();
     bits = 0;
+    preamble = space = false;
     enabled = true;
 }
 
-void loop() {
-    if (bits == 28) {
-        decode_temp();
-        bits = 0;
-        enabled = true;
-    }
+void disable1()
+{
+    enabled = false;
 }
 
-int delta(int dist) { return abs(dist); }
-
-bool isImpuls(int duration, unsigned int length)
+void printdata(byte &id, int &temp, byte &chan, boolean &batt, boolean &beep)
 {
-    return (delta(duration - length) <= TOLERANCE);
+    Serial.print("id = ");
+    Serial.print(id);
+    Serial.print(", temp = ");
+    Serial.print(temp/10);
+    Serial.print(".");
+    Serial.print(temp%10);
+    Serial.print(", chan = ");
+    Serial.println(chan);
+}
+
+bool isImpuls(int duration)
+{
+    return (abs(duration) <= TOLERANCE);
 }
 
 void handler()
@@ -48,34 +87,25 @@ void handler()
     lastChange = currentTime;
     boolean state = digitalRead(2);
     if (!state) {     // goes from HIGH to LOW
-        space = isImpuls(duration, 500);
+        space = isImpuls(duration - 500);
     }
     else if (space) { // goes from LOW to HIGH
         if (!preamble) {
-            preamble = isImpuls(duration, 9500);
+            preamble = isImpuls(duration - 9500);
             bits = 0;
         }
         else {
-            boolean low = isImpuls(duration, 2000);
-            boolean high = !low && isImpuls(duration, 4500);
+            boolean low = isImpuls(duration - 2000);
+            boolean high = !low && isImpuls(duration - 4500);
             if (low != high) {
                 arr[bits++] = high;
                 if (bits == 28) {
-                    // 0) all bits are received so disable decoding to not run into recursive deadloop
-                    enabled = false;
-
-                    // 1) decode to temporary variables and compare with internal struct
-
-                    // 2) if it's the same data and current millis() < timestamp of internal struct + 1 second then go to 5
-
-                    // 3) store temporary variables to internal struct and mark it with current timestamp (millis)
-
-                    // 4) call user callback with data
-
-                    // 5) reset variables and re-enable decoding
-                    preamble = false;
-                    // bits = 0;
-                    // enabled = true;
+                    // all bits are received so disable receiving to not run into recursive deadloop
+                    disable1();
+                    // decode data and if it's fresh new then call user callback
+                    decode_temp();
+                    // reset receiving state and re-enable receiving
+                    enable1();
                 }
             }
             else {
@@ -108,23 +138,27 @@ boolean check_sum()
 
 void decode_temp()
 {
-    if (!check_sum()) {
-        Serial.println("Checksum failed.");
+// check control sum
+    if (!check_sum())
         return;
-    }
 
+// decode to temporary variables and compare with internal struct
     byte id = readbits(4, 8);
     int temp = readbits(12, 12);
     byte chan = readbits(24, 2);
     boolean batt = arr[26];
     boolean beep = arr[27];
     
-    Serial.print("id = ");
-    Serial.print(id);
-    Serial.print(", temp = ");
-    Serial.print(temp/10);
-    Serial.print(".");
-    Serial.print(temp%10);
-    Serial.print(", chan = ");
-    Serial.println(chan);
+// if it's the same data and last timestamp is less than 1 second ago then ignore it
+    if ((millis() - last_milistamp) < 1000 && id == last_id && temp == last_temp && chan == last_chan)
+        return;
+
+// store temporary variables to internal struct and mark it with current timestamp (millis)
+    last_id = id;
+    last_temp = temp;
+    last_chan = chan;
+    last_milistamp = millis();
+
+// 4) call user callback with data
+    (callback)(id, temp, chan, batt, beep);
 }
