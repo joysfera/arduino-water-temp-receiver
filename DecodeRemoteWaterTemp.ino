@@ -15,6 +15,8 @@ boolean space = false;
 byte bits = 0;
 boolean arr[28];
 
+#define TOLERANCE 50
+
 void setup() {
     Serial.begin(115200);
     attachInterrupt(0, handler, CHANGE);
@@ -30,14 +32,11 @@ void loop() {
     }
 }
 
-inline int delta(int dist)
-{
-    return dist > 0 ? dist : -dist;
-}
+int delta(int dist) { return abs(dist); }
 
-bool isImpuls(unsigned int duration, unsigned int length)
+bool isImpuls(int duration, unsigned int length)
 {
-    return (delta(duration, length) <= TOLERANCE);
+    return (delta(duration - length) <= TOLERANCE);
 }
 
 void handler()
