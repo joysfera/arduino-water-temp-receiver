@@ -16,7 +16,7 @@
 
 #include <Arduino.h>
 
-#define RWR_TOLERANCE 80
+#define RWR_TOLERANCE 100
 
 typedef void (*RemoteWaterReceiverCallback)(byte &id, int &temp, byte &chan, boolean &batt, boolean &beep);
 
@@ -71,6 +71,7 @@ class RemoteWaterReceiver {
 
         static short int interrupt;
         static RemoteWaterReceiverCallback callback;
+        static byte interruptPin;
         static bool enabled;
         static unsigned long lastChange;
         static bool preamble;

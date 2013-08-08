@@ -15,6 +15,7 @@
 
 short int RemoteWaterReceiver::interrupt;
 RemoteWaterReceiverCallback RemoteWaterReceiver::callback;
+byte RemoteWaterReceiver::interruptPin;
 bool RemoteWaterReceiver::enabled;
 unsigned long RemoteWaterReceiver::lastChange;
 bool RemoteWaterReceiver::preamble;
@@ -30,6 +31,10 @@ void RemoteWaterReceiver::init(short int _interrupt, RemoteWaterReceiverCallback
 {
     interrupt = _interrupt;
     callback = _callback;
+
+    interruptPin = (interrupt == 0) ? 2 : 3;  // find a conversion function for this
+    pinMode(interruptPin, INPUT_PULLUP);
+
     enable();
     if (interrupt >= 0)
         attachInterrupt(interrupt, interruptHandler, CHANGE);
@@ -67,7 +72,7 @@ void RemoteWaterReceiver::interruptHandler()
     unsigned long currentTime = micros();
     unsigned duration = currentTime - lastChange;
     lastChange = currentTime;
-    boolean state = digitalRead(2);
+    boolean state = digitalRead(interruptPin);
     if (!state) {     // goes from HIGH to LOW
         space = isImpuls(duration - 500);
     }
@@ -82,12 +87,9 @@ void RemoteWaterReceiver::interruptHandler()
             if (low != high) {
                 arr[bits++] = high;
                 if (bits == 28) {
-                    // all bits are received so disable receiving to not run into recursive deadloop
-                    disable();
-                    // decode data and if it's fresh new then call user callback
                     decodeTemp();
-                    // reset receiving state and re-enable receiving
-                    enable();
+                    bits = 0;
+                    preamble = false;
                 }
             }
             else {
