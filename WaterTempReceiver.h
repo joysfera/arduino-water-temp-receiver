@@ -1,32 +1,33 @@
 /*
- * RemoteWaterThermometer
+ * Water Temperature Receiver
  * 
- * This library receives, decodes and transmits data of
- * remote water sensors KW9043.
+ * This library receives and decodes data sent by
+ * remote water sensor KW9043 and compatible ones.
  * 
  * Copyright 2013 by Petr Stehlik http://pstehlik.cz/
  *
- * Idea of the communication protocol and timing based on ...
+ * Idea of the communication protocol and timing based on
+ *   reverse-engineering of Abdullah Tahiri's RemoteTransmitter
  *
- * License: GPLv3. See license.txt
+ * License: GPLv3. See LICENSE.md
  */
 
-#ifndef RemoteWaterReceiver_h
-#define RemoteWaterReceiver_h
+#ifndef WaterTempReceiver_h
+#define WaterTempReceiver_h
 
 #include <Arduino.h>
 
-#define RWR_TOLERANCE 100
+#define RWR_TOLERANCE 200
 
-typedef void (*RemoteWaterReceiverCallback)(byte &id, int &temp, byte &chan, boolean &batt, boolean &beep);
+typedef void (*WaterTempReceiverCallback)(byte &id, int &temp, byte &chan, boolean &batt, boolean &beep);
 
 /**
  * Generic class for receiving and decoding 433MHz remote water thermometer sensor KW9043 (and similar ones).
  *
  * Hardware required for this library:
- * A 433MHz/434MHz SAW receiver, e.g. http://www.sparkfun.com/products/10532
+ * A simple and cheap 433MHz receiver from Ebay etc.
  */
-class RemoteWaterReceiver {
+class WaterTempReceiver {
     public:
         /**
          * Initializes the receiver. When a valid data package has been received, the callback is called.
@@ -40,7 +41,7 @@ class RemoteWaterReceiver {
          * @param callback      Pointer to a callback function
          *
          */
-        static void init(short int interrupt, RemoteWaterReceiverCallback callback);
+        static void init(short int interrupt, WaterTempReceiverCallback callback);
 
         /**
         * Deinitializes the receiver and removes interrupt handler.
@@ -58,7 +59,7 @@ class RemoteWaterReceiver {
         static void disable();
 
         /**
-         * interruptHandler is called on every change in the input signal. If RemoteWaterReceiver::init is called
+         * interruptHandler is called on every change in the input signal. If WaterTempReceiver::init is called
          * with interrupt <0, you have to call interruptHandler() yourself. (Or use InterruptChain)
          */
         static void interruptHandler();
@@ -70,7 +71,7 @@ class RemoteWaterReceiver {
         static void decodeTemp();
 
         static short int interrupt;
-        static RemoteWaterReceiverCallback callback;
+        static WaterTempReceiverCallback callback;
         static byte interruptPin;
         static bool enabled;
         static unsigned long lastChange;

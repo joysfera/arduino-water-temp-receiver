@@ -1,38 +1,39 @@
 /*
- * RemoteWaterThermometer
+ * Water Temperature Receiver
  * 
- * This library receives, decodes and transmits data of
- * remote water sensors KW9043.
+ * This library receives and decodes data sent by
+ * remote water sensor KW9043 and compatible ones.
  *
  * Copyright 2013 by Petr Stehlik  http://pstehlik.cz/
  *
- * Idea of the communication protocol and timing based on ...
+ * Idea of the communication protocol and timing based on
+ *   reverse-engineering of Abdullah Tahiri's RemoteTransmitter
  *
- * License: GPLv3. See license.txt
+ * License: GPLv3. See LICENSE.md
  */
 
-#include <RemoteWaterReceiver.h>
+#include <WaterTempReceiver.h>
 
-short int RemoteWaterReceiver::interrupt;
-RemoteWaterReceiverCallback RemoteWaterReceiver::callback;
-byte RemoteWaterReceiver::interruptPin;
-bool RemoteWaterReceiver::enabled;
-unsigned long RemoteWaterReceiver::lastChange;
-bool RemoteWaterReceiver::preamble;
-bool RemoteWaterReceiver::space;
-byte RemoteWaterReceiver::bits;
-bool RemoteWaterReceiver::arr[28];
-byte RemoteWaterReceiver::last_id;
-byte RemoteWaterReceiver::last_chan;
-int RemoteWaterReceiver::last_temp;
-unsigned long RemoteWaterReceiver::last_milistamp;
+short int WaterTempReceiver::interrupt;
+WaterTempReceiverCallback WaterTempReceiver::callback;
+byte WaterTempReceiver::interruptPin;
+bool WaterTempReceiver::enabled;
+unsigned long WaterTempReceiver::lastChange;
+bool WaterTempReceiver::preamble;
+bool WaterTempReceiver::space;
+byte WaterTempReceiver::bits;
+bool WaterTempReceiver::arr[28];
+byte WaterTempReceiver::last_id;
+byte WaterTempReceiver::last_chan;
+int WaterTempReceiver::last_temp;
+unsigned long WaterTempReceiver::last_milistamp;
 
-void RemoteWaterReceiver::init(short int _interrupt, RemoteWaterReceiverCallback _callback)
+void WaterTempReceiver::init(short int _interrupt, WaterTempReceiverCallback _callback)
 {
     interrupt = _interrupt;
     callback = _callback;
 
-    interruptPin = (interrupt == 0) ? 2 : 3;  // find a conversion function for this
+    interruptPin = (interrupt == 0) ? 2 : 3;  // TODO: find a conversion function for this
     pinMode(interruptPin, INPUT_PULLUP);
 
     enable();
@@ -40,14 +41,14 @@ void RemoteWaterReceiver::init(short int _interrupt, RemoteWaterReceiverCallback
         attachInterrupt(interrupt, interruptHandler, CHANGE);
 }
 
-void RemoteWaterReceiver::deinit()
+void WaterTempReceiver::deinit()
 {
     disable();
     if (interrupt >= 0)
         detachInterrupt(interrupt);
 }
 
-void RemoteWaterReceiver::enable()
+void WaterTempReceiver::enable()
 {
     lastChange = micros();
     bits = 0;
@@ -55,17 +56,17 @@ void RemoteWaterReceiver::enable()
     enabled = true;
 }
 
-void RemoteWaterReceiver::disable()
+void WaterTempReceiver::disable()
 {
     enabled = false;
 }
 
-bool RemoteWaterReceiver::isImpuls(int duration)
+bool WaterTempReceiver::isImpuls(int duration)
 {
     return (abs(duration) <= RWR_TOLERANCE);
 }
 
-void RemoteWaterReceiver::interruptHandler()
+void WaterTempReceiver::interruptHandler()
 {
     if (!enabled) return;
 
@@ -100,7 +101,7 @@ void RemoteWaterReceiver::interruptHandler()
     }
 }
 
-int RemoteWaterReceiver::readBits(byte start, byte count)
+int WaterTempReceiver::readBits(byte start, byte count)
 {
     int val = 0;
     for(byte i = start; i < start + count; i++) {
@@ -110,7 +111,7 @@ int RemoteWaterReceiver::readBits(byte start, byte count)
     return val;
 }
 
-bool RemoteWaterReceiver::checkSum()
+bool WaterTempReceiver::checkSum()
 {
     byte checksum = readBits(0, 4);
     byte chk = 0;
@@ -120,7 +121,7 @@ bool RemoteWaterReceiver::checkSum()
     return (checksum == (chk & 0x0f));
 }
 
-void RemoteWaterReceiver::decodeTemp()
+void WaterTempReceiver::decodeTemp()
 {
 // check control sum
     if (!checkSum()) {
