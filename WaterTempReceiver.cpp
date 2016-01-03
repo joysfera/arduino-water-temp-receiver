@@ -1,11 +1,14 @@
 /*
- * Water Temperature Receiver
+ * Water Temperature Receiver v1.1
  * 
  * This library receives and decodes data sent by
- * remote water sensor KW9043 and compatible ones.
+ * remote water sensor KW9043, Hyundai WSC (Hyundai WSC 1925) and compatible ones.
  *
  * Copyright 2013 by Petr Stehlik  http://pstehlik.cz/
- *
+ 
+ v1.1
+ * Added support to read negative temperatures by Radius
+ 
  * Idea of the communication protocol and timing based on
  *   reverse-engineering of Abdullah Tahiri's RemoteTransmitter
  *
@@ -131,11 +134,21 @@ void WaterTempReceiver::decodeTemp()
 
 // decode to temporary variables and compare with internal struct
     byte id = readBits(4, 8);
-    int temp = readBits(12, 12);
+	byte temp_sign = readBits(12, 4);
+    int temp = readBits(16, 8);
     byte chan = readBits(24, 2);
-    boolean batt = arr[26];
-    boolean beep = arr[27];
+    boolean batt = arr[26];	//BAT OK = 1
+    boolean beep = arr[27];	//BEEP = 1
     
+	// = 1111 = freezing, let's do two complement
+	if (temp_sign == B1111)
+	{
+		temp = temp ^ B11111111;
+		temp = -temp - 1;
+	}
+		
+		
+	
 // if it's the same data and last timestamp is less than 1 second ago then ignore it
     if ((millis() - last_milistamp) < 1000 && id == last_id && temp == last_temp && chan == last_chan) {
         // Serial.println("Received same packet again");
