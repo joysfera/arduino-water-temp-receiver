@@ -132,6 +132,7 @@ void WaterTempReceiver::decodeTemp()
 // decode to temporary variables and compare with internal struct
     byte id = readBits(4, 8);
     int temp = readBits(12, 12);
+    if (temp > 2048) temp -= 4096; // handle negative values
     byte chan = readBits(24, 2);
     boolean batt = arr[26];
     boolean beep = arr[27];
